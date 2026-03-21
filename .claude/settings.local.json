@@ -14,7 +14,12 @@
       "Bash(python -m ruff check:*)",
       "Bash(ruff format:*)",
       "Bash(git -C /Users/vigneshpai/Desktop/quantforge add -A)",
-      "Bash(git -C /Users/vigneshpai/Desktop/quantforge status)"
+      "Bash(git -C /Users/vigneshpai/Desktop/quantforge status)",
+      "Bash(git -C /Users/vigneshpai/Desktop/quantforge commit -m \"$\\(cat <<''EOF''\nfeat: Phase 1 — project scaffold, data interfaces, Yahoo provider, SQLite cache, feature engineering\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/vigneshpai/Desktop/quantforge remote add origin https://github.com/vigp17/quantforge.git)",
+      "Bash(git -C /Users/vigneshpai/Desktop/quantforge push -u origin main)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
