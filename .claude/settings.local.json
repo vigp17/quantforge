@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(for dir in src/data src/signals src/portfolio src/execution src/backtest src/monitoring src/research tests tests/test_data tests/test_signals tests/test_portfolio tests/test_execution tests/test_backtest tests/integration)",
+      "Bash(do touch \"$dir/__init__.py\")",
+      "Bash(done)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -c:*)",
+      "Bash(git init:*)",
+      "Bash(gh repo create:*)",
+      "Bash(gh auth status:*)",
+      "Bash(ruff check:*)",
+      "Bash(python -m ruff check:*)",
+      "Bash(ruff format:*)",
+      "Bash(git -C /Users/vigneshpai/Desktop/quantforge add -A)",
+      "Bash(git -C /Users/vigneshpai/Desktop/quantforge status)"
+    ]
+  }
+}
