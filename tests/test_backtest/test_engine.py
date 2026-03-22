@@ -491,6 +491,45 @@ class TestRiskEvents:
         assert len(result.risk_events) > 0
         assert any("FLATTEN" in ev for ev in result.risk_events)
 
+    def test_reentry_after_flatten_reset(self):
+        """After a flatten event, peak is reset so the system re-enters the market."""
+        n = 60
+        dates = _make_dates(n)
+        start, end = str(dates[0].date()), str(dates[-1].date())
+
+        # Prices crash then fully recover: 30 days of 5% drops, 30 days of gains.
+        crash = [100.0 * (0.95**i) for i in range(30)]
+        recovery = [crash[-1] * (1.10**i) for i in range(30)]
+        prices = crash + recovery
+
+        data: dict[str, AssetData] = {}
+        for sym in _SYMBOLS:
+            data[sym] = AssetData(symbol=sym, ohlcv=_make_ohlcv(prices, dates))
+
+        engine = BacktestEngine(
+            signals=[_MockSignalGenerator("m", 2)],
+            agent=_SymbolAwareAgent(_SYMBOLS),
+            risk_manager=RiskManager({"max_drawdown_pct": 0.10, "daily_loss_limit_pct": 0.10}),
+            rebalancer=Rebalancer(),
+            rebalance_frequency="daily",
+            transaction_cost_bps=0.0,
+        )
+        result = engine.run(data, start, end)
+
+        # Must have at least one flatten event during the crash…
+        assert any("FLATTEN" in ev for ev in result.risk_events)
+
+        # …and non-zero weights must appear in the recovery period (re-entry happened).
+        recovery_weights = [
+            entry for entry in result.weights_history
+            if entry["date"] >= str(dates[30].date())
+        ]
+        non_cash = [
+            entry for entry in recovery_weights
+            if any(entry.get(sym, 0.0) != 0.0 for sym in _SYMBOLS)
+        ]
+        assert len(non_cash) > 0, "System never re-entered the market after flatten reset"
+
     def test_position_clipping_logged_as_risk_event(self):
         """Agent proposing 50% positions gets clipped at 30% — warning in risk_events."""
         n = 10

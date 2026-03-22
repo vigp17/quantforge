@@ -182,6 +182,10 @@ class BacktestEngine:
         current_weights: dict[str, float] = {}
 
         pv_list: list[tuple[pd.Timestamp, float]] = []
+        # Separate NAV window for risk checks — resets after each flatten event
+        # so the drawdown clock starts from the post-flatten NAV, not the
+        # all-time high that triggered the previous breach.
+        pv_for_risk: list[float] = []
         weights_history: list[dict] = []
         trades_history: list[list[Order]] = []
         signals_history: list[Signal] = []
@@ -197,6 +201,7 @@ class BacktestEngine:
                 portfolio_value = portfolio_value * (1.0 + day_portfolio_return)
 
             pv_list.append((date, portfolio_value))
+            pv_for_risk.append(portfolio_value)
 
             # Rebalance if today is a scheduled rebalance date.
             if date in rebalance_dates:
@@ -217,11 +222,11 @@ class BacktestEngine:
                 # Agent decides target allocation.
                 action = self._agent.decide(signals, dict(current_weights))
 
-                # Risk veto check.
-                pv_values = [v for _, v in pv_list]
+                # Risk veto check — use the post-flatten window so the drawdown
+                # is measured from the reset peak, not the all-time high.
                 yesterday_value = pv_list[-2][1] if len(pv_list) >= 2 else portfolio_value
                 flatten, flatten_reasons = self._risk_manager.should_flatten(
-                    pv_values, portfolio_value, yesterday_value
+                    pv_for_risk, portfolio_value, yesterday_value
                 )
 
                 if flatten:
@@ -230,6 +235,11 @@ class BacktestEngine:
                         risk_events.append(msg)
                         logger.warning(msg)
                     target_weights: dict[str, float] = {}
+                    # Reset the risk window and peak so the next rebalance
+                    # measures drawdown from the post-flatten NAV, not the
+                    # pre-flatten high that triggered this breach.
+                    self._risk_manager.reset_peak(portfolio_value)
+                    pv_for_risk = [portfolio_value]
                 else:
                     adjusted, warnings = self._risk_manager.validate_action(action, {})
                     for w in warnings:

@@ -304,6 +304,51 @@ class TestShouldFlatten:
 
 
 # ---------------------------------------------------------------------------
+# reset_peak
+# ---------------------------------------------------------------------------
+
+class TestResetPeak:
+    def test_reset_sets_peak_to_current_value(self) -> None:
+        rm = RiskManager()
+        rm.check_drawdown([100.0, 120.0])  # peak becomes 120
+        rm.reset_peak(90.0)
+        assert rm._peak_value == pytest.approx(90.0)
+
+    def test_after_reset_drawdown_measured_from_new_peak(self) -> None:
+        rm = RiskManager({"max_drawdown_pct": 0.15})
+        rm.check_drawdown([100.0, 120.0])  # peak = 120; old current 80 would be 33% dd
+        rm.reset_peak(90.0)  # new peak = 90
+        # 10% drop from new peak — must not breach 15% limit
+        breached, dd = rm.check_drawdown([81.0])
+        assert not breached
+        assert dd == pytest.approx(0.10, rel=1e-4)
+
+    def test_after_reset_old_peak_cannot_retrigger_flatten(self) -> None:
+        rm = RiskManager({"max_drawdown_pct": 0.15})
+        # First, breach the limit (20% drawdown)
+        flatten, _ = rm.should_flatten([100.0, 80.0], 80.0, 100.0)
+        assert flatten
+        # Reset peak to the post-flatten NAV
+        rm.reset_peak(80.0)
+        # Now at the same NAV → 0% drawdown from new peak, no flatten
+        flatten2, _ = rm.should_flatten([80.0], 80.0, 80.0)
+        assert not flatten2
+
+    def test_reset_without_prior_check_sets_peak(self) -> None:
+        rm = RiskManager()
+        assert rm._peak_value is None
+        rm.reset_peak(50.0)
+        assert rm._peak_value == pytest.approx(50.0)
+
+    def test_reset_allows_reentry_after_recovery(self) -> None:
+        rm = RiskManager({"max_drawdown_pct": 0.15})
+        rm.reset_peak(80.0)
+        # Recovery to 88 (+10% from reset peak of 80) — within limit
+        breached, dd = rm.check_drawdown([84.0, 88.0])
+        assert not breached
+
+
+# ---------------------------------------------------------------------------
 # generate_risk_report
 # ---------------------------------------------------------------------------
 

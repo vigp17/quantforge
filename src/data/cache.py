@@ -174,9 +174,19 @@ class SQLiteCacheProvider(DataProvider):
             )
             fetched_frames: list[pd.DataFrame] = []
             for gap_start, gap_end in gaps:
-                asset = self._provider.fetch_historical(symbol, gap_start, gap_end)
-                self._write_cache(symbol, asset.ohlcv)
-                fetched_frames.append(asset.ohlcv)
+                try:
+                    asset = self._provider.fetch_historical(symbol, gap_start, gap_end)
+                    self._write_cache(symbol, asset.ohlcv)
+                    fetched_frames.append(asset.ohlcv)
+                except ValueError:
+                    # Gap falls entirely on non-trading days (e.g. holidays);
+                    # no data to add — continue with whatever is already cached.
+                    logger.debug(
+                        "No data for gap [%s, %s) for %s (likely non-trading days), skipping",
+                        gap_start,
+                        gap_end,
+                        symbol,
+                    )
 
             if cached.empty:
                 combined = pd.concat(fetched_frames).sort_index()

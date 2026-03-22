@@ -121,6 +121,19 @@ class RiskManager:
         )
         return adjusted, warnings
 
+    def reset_peak(self, current_value: float) -> None:
+        """Reset the running peak to *current_value* after a flatten event.
+
+        Call this immediately after the engine flattens all positions so that
+        the drawdown check starts fresh from the post-flatten NAV rather than
+        remaining permanently triggered by the pre-flatten peak.
+
+        Args:
+            current_value: Current portfolio NAV to use as the new peak.
+        """
+        self._peak_value = current_value
+        logger.info("Peak value reset to %.2f after flatten event", current_value)
+
     def check_drawdown(self, portfolio_values: list[float]) -> tuple[bool, float]:
         """Compute current drawdown from the running peak.
 
